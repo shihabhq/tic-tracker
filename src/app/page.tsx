@@ -10,7 +10,7 @@ const Board = () => {
   const [board, setBoard] = useState<Board>(Array(9).fill(null));
   const [isPlayerTurn, setIsPlayerTurn] = useState<boolean>(true);
   const [winner, setWinner] = useState<Player | "draw" | null>(null);
-
+  const [hardMode, setHardMode] = useState<boolean>(true);
   const [playerScore, setPlayerScore] = useState<number>(0);
   const [computerScore, setComputerScore] = useState<number>(0);
 
@@ -49,11 +49,13 @@ const Board = () => {
     setIsPlayerTurn(false);
 
     const gameWinner = checkWinner(newBoard);
-    if (gameWinner) {
-      setWinner(gameWinner);
-      if (gameWinner === "X") setPlayerScore((prev) => prev + 1);
-      if (gameWinner === "O") setComputerScore((prev) => prev + 1);
-    }
+    setTimeout(() => {
+      if (gameWinner) {
+        setWinner(gameWinner);
+        if (gameWinner === "X") setPlayerScore((prev) => prev + 1);
+        if (gameWinner === "O") setComputerScore((prev) => prev + 1);
+      }
+    }, 200);
   };
 
   //computer move
@@ -64,13 +66,20 @@ const Board = () => {
 
     const timeOutId = setTimeout(() => {
       const newBoard = [...board];
-      const emptyCells = newBoard
-        .map((cell, index) => (cell === null ? index : null))
-        .filter((index) => index !== null);
-      const randomIndex = Math.floor(Math.random() * emptyCells.length);
-      newBoard[emptyCells[randomIndex]] = "O";
-      setBoard(newBoard);
-
+      if (hardMode) {
+        const bestMove = findBestMove(newBoard);
+        if (bestMove !== -1) {
+          newBoard[bestMove] = "O";
+          setBoard(newBoard);
+        }
+      } else {
+        const emptyCells = newBoard
+          .map((cell, index) => (cell === null ? index : null))
+          .filter((index) => index !== null);
+        const randomIndex = Math.floor(Math.random() * emptyCells.length);
+        newBoard[emptyCells[randomIndex]] = "O";
+        setBoard(newBoard);
+      }
       const gameWinner = checkWinner(newBoard);
 
       if (gameWinner) {
@@ -86,7 +95,69 @@ const Board = () => {
     }, 500);
 
     return () => clearTimeout(timeOutId);
-  }, [board, isPlayerTurn, winner]);
+  }, [board, isPlayerTurn, winner, hardMode]);
+
+  // Computer AI logic
+  //dumped from ai:
+  const findBestMove = (board: Board): number => {
+    // Check if computer can win
+    const winMove = findWinningMove(board, "O");
+    if (winMove !== -1) return winMove;
+
+    // Check if player can win and block
+    const blockMove = findWinningMove(board, "X");
+    if (blockMove !== -1) return blockMove;
+
+    // Take center if available
+    if (board[4] === null) return 4;
+
+    // Take corners if available
+    const corners = [0, 2, 6, 8];
+    const availableCorners = corners.filter((i) => board[i] === null);
+    if (availableCorners.length > 0) {
+      return availableCorners[
+        Math.floor(Math.random() * availableCorners.length)
+      ];
+    }
+
+    // Take any available spot
+    const availableSpots = board
+      .map((cell, i) => (cell === null ? i : -1))
+      .filter((i) => i !== -1);
+    if (availableSpots.length > 0) {
+      return availableSpots[Math.floor(Math.random() * availableSpots.length)];
+    }
+
+    return -1;
+  };
+
+  // Find winning move for a player
+  const findWinningMove = (board: Board, player: Player): number => {
+    const lines = [
+      [0, 1, 2],
+      [3, 4, 5],
+      [6, 7, 8], // rows
+      [0, 3, 6],
+      [1, 4, 7],
+      [2, 5, 8], // columns
+      [0, 4, 8],
+      [2, 4, 6], // diagonals
+    ];
+
+    for (const [a, b, c] of lines) {
+      const cells = [board[a], board[b], board[c]];
+      const playerCells = cells.filter((cell) => cell === player).length;
+      const emptyCells = cells.filter((cell) => cell === null).length;
+
+      if (playerCells === 2 && emptyCells === 1) {
+        if (board[a] === null) return a;
+        if (board[b] === null) return b;
+        if (board[c] === null) return c;
+      }
+    }
+
+    return -1;
+  };
 
   const resetGame = () => {
     setBoard(Array(9).fill(null));
@@ -115,6 +186,30 @@ const Board = () => {
 
   return (
     <div className="flex flex-col items-center justify-center my-30">
+      <div className="flex justify-center gap-8 w-full max-w-md mb-8">
+        <button
+          onClick={() => {
+            setHardMode(true);
+            resetGame();
+          }}
+          className={` ${
+            hardMode ? "bg-blue-500 text-white" : "text-blue-500"
+          } mr-2 px-4 py-2 cursor-pointer font-semibold border border-blue-500 rounded-md`}
+        >
+          Hard Mode
+        </button>
+        <button
+          onClick={() => {
+            setHardMode(false);
+            resetGame();
+          }}
+          className={` ${
+            !hardMode ? "bg-blue-500 text-white" : "text-blue-500"
+          } mr-2 cursor-pointer border border-blue-500 px-4 py-2  font-semibold rounded-md`}
+        >
+          Easy Mode
+        </button>
+      </div>
       <div className="flex justify-between w-full max-w-md mb-8">
         <div className="flex items-center flex-col font-bold text-xl">
           Your Score(X): <span className="text-blue-500">{playerScore}</span>
