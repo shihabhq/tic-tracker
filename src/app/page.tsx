@@ -52,10 +52,43 @@ const Board = () => {
     setTimeout(() => {
       if (gameWinner) {
         setWinner(gameWinner);
-        if (gameWinner === "X") setPlayerScore((prev) => prev + 1);
-        if (gameWinner === "O") setComputerScore((prev) => prev + 1);
+        if (gameWinner === "X") {
+          setPlayerScore((prev) => prev + 1);
+          updateScore("won");
+        } else if (gameWinner === "O") {
+          setComputerScore((prev) => prev + 1);
+          updateScore("lose");
+        } else if (gameWinner === "draw") {
+          updateScore("draw");
+        }
       }
     }, 200);
+  };
+
+  //update the score
+  const updateScore = async (status: "won" | "lose" | "draw") => {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SERVER_URL}/api/update-score`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            status,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        toast.error("Error updating score");
+        return;
+      }
+    } catch (e) {
+      toast.error("Error updating score");
+      console.error(e);
+    }
   };
 
   //computer move
@@ -86,9 +119,12 @@ const Board = () => {
         setWinner(gameWinner);
         if (gameWinner === "X") {
           setPlayerScore((prev) => prev + 1);
-        }
-        if (gameWinner === "O") {
+          updateScore("won");
+        } else if (gameWinner === "O") {
           setComputerScore((prev) => prev + 1);
+          updateScore("lose");
+        } else if (gameWinner === "draw") {
+          updateScore("draw");
         }
       }
       setIsPlayerTurn(true);
