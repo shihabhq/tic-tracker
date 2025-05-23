@@ -1,5 +1,8 @@
 "use client";
+import { createClient } from "@/utils/client";
+import { User } from "@supabase/supabase-js";
 import { Circle, X } from "lucide-react";
+import { redirect } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -13,6 +16,22 @@ const Board = () => {
   const [hardMode, setHardMode] = useState<boolean>(true);
   const [playerScore, setPlayerScore] = useState<number>(0);
   const [computerScore, setComputerScore] = useState<number>(0);
+  const { auth } = createClient();
+  const [user, setUser] = useState<null | User>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data, error } = await auth.getUser();
+
+      if (error) {
+        console.error("Error getting user:", error);
+        redirect("/login");
+      } else {
+        setUser(data.user);
+      }
+    };
+    getUser();
+  }, [auth]);
 
   const checkWinner = (board: Board): Player | "draw" | null => {
     const lines = [
@@ -71,12 +90,13 @@ const Board = () => {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_SERVER_URL}/api/update-score`,
         {
-          method: "POST",
+          method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             status,
+            email: user?.email,
           }),
         }
       );
